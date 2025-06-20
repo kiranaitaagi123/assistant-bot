@@ -76,10 +76,9 @@ jobs:
           java-version: '11'
 
       - name: Install SonarScanner CLI
-        shell: pwsh
         run: |
-          # define the zip path
-          $zip = "$PWD\scanner.zip"
+          # define the zip path in the workspace
+          $zip = Join-Path $env:RUNNER_WORKSPACE 'scanner.zip'
           Write-Host "Downloading SonarScanner CLI to $zip..."
           Invoke-WebRequest `
             -Uri 'https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-windows.zip' `
@@ -88,7 +87,7 @@ jobs:
           Write-Host "Expanding $zip to sonar-scanner folder..."
           Expand-Archive `
             -LiteralPath $zip `
-            -DestinationPath "$PWD\sonar-scanner" `
+            -DestinationPath (Join-Path $env:RUNNER_WORKSPACE 'sonar-scanner') `
             -Force
 
       - name: Run SonarQube analysis
@@ -98,7 +97,7 @@ jobs:
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
           GITHUB_SHA:     ${{ needs.test.outputs.commit_sha }}
         run: |
-          $scannerDir = Get-ChildItem -Directory "$PWD\sonar-scanner" | Select-Object -First 1
+          $scannerDir = Get-ChildItem -Directory (Join-Path $env:RUNNER_WORKSPACE 'sonar-scanner') | Select-Object -First 1
           $exe = Join-Path $scannerDir.FullName 'bin\sonar-scanner.bat'
           Write-Host "Invoking" $exe
           & $exe `
