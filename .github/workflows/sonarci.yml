@@ -1,0 +1,128 @@
+name: CI + SonarQube Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ────────────────────────────────────────────────
+  # 1. Run your existing tests (Matrix Build)
+  # ────────────────────────────────────────────────
+  test:
+    name: Matrix Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+      - name: Checkout code
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies & coverage tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install coverage pytest
+
+      - name: Run pytest and generate XML report
+        run: pytest --junitxml=backend/test_results-${{ matrix.python-version }}.xml
+
+      - name: Run backend coverage
+        run: |
+          coverage run --source=backend -m pytest backend
+          coverage xml -o backend/coverage.xml
+
+      - name: Run frontend tests with coverage
+        # run from the frontend folder
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test
+
+      - name: Upload pytest results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: backend/test_results-${{ matrix.python-version }}.xml
+
+      - name: Upload backend coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+
+      - name: Upload frontend coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+
+    outputs:
+      sha: ${{ steps.checkout.outputs.commit }}
+
+  # ────────────────────────────────────────────────
+  # 2. SonarQube Analysis
+  # ────────────────────────────────────────────────
+  sonar:
+    name: SonarQube Analysis
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      sonarqube:
+        image: sonarqube:lts
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd="curl --fail http://localhost:9000/login"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: Temurin
+          java-version: 11
+
+      - name: Wait for SonarQube to be ready
+        run: npx wait-on http://localhost:9000
+
+      - name: Install SonarScanner CLI
+        run: |
+          curl -sSLo scanner.zip \
+            https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+          unzip scanner.zip && mv sonar-scanner-*/ sonar-scanner
+
+      - name: Run SonarQube analysis
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
+          GITHUB_SHA:     ${{ needs.test.outputs.sha }}
+        run: |
+          ./sonar-scanner/bin/sonar-scanner \
+            -Dsonar.projectKey=assistant-bot \
+            -Dsonar.sources=backend,frontend \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.python.coverage.reportPaths=backend/coverage.xml \
+            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info \
+            -Dsonar.sourceEncoding=UTF-8 \
+            -Dsonar.scm.revision=$GITHUB_SHA
