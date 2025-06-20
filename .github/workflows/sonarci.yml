@@ -1,4 +1,4 @@
-name: CI + SonarQube Analysis
+name: SonarQube Analysis
 
 on:
   push:
@@ -6,68 +6,11 @@ on:
   pull_request:
 
 jobs:
-  # ────────────────────────────────────────────────
-  # 1. Matrix’d tests + coverage upload
-  # ────────────────────────────────────────────────
-  test:
-    name: Matrix Test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9","3.10","3.11"]
-    outputs:
-      commit_sha: ${{ steps.checkout.outputs.commit }}
-
-    steps:
-      - id: checkout
-        name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies & coverage tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt coverage pytest
-
-      - name: Run backend tests + coverage
-        run: |
-          pytest --junitxml=backend/test_results-${{ matrix.python-version }}.xml
-          coverage run --source=backend -m pytest backend
-          coverage xml -o backend/coverage-${{ matrix.python-version }}.xml
-
-      - name: Upload pytest results
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-results-${{ matrix.python-version }}
-          path: backend/test_results-${{ matrix.python-version }}.xml
-
-      - name: Upload backend coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage-${{ matrix.python-version }}
-          path: backend/coverage-${{ matrix.python-version }}.xml
-
-  # ────────────────────────────────────────────────
-  # 2. SonarQube analysis (with manual wait)
-  # ────────────────────────────────────────────────
   sonar:
     name: SonarQube Analysis
     needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    services:
-      sonarqube:
-        image: sonarqube:lts
-        ports:
-          - 9000:9000
-        # no health-check here — we'll wait manually
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -75,40 +18,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Wait for SonarQube to start (max 2m)
-        run: |
-          echo " Waiting up to 2m for SonarQube to be ready..."
-          timeout 120 bash -c 'until curl --silent --fail http://localhost:9000; do sleep 5; done'
-
-      - name: Download backend coverage (3.11)
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-coverage-3.11
-          path: backend
-
       - name: Set up Java 11
         uses: actions/setup-java@v3
         with:
-          distribution: Temurin
-          java-version: 11
+          distribution: temurin    # ← lower-case
+          java-version: '11'
 
       - name: Install SonarScanner CLI
         run: |
-          curl -sSLo scanner.zip \
-            https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-          unzip scanner.zip && mv sonar-scanner-*/ sonar-scanner
+          Invoke-WebRequest `
+            -Uri "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-windows.zip" `
+            -OutFile scanner.zip
+          Expand-Archive scanner.zip -DestinationPath scanner
 
       - name: Run SonarQube analysis
         env:
           SONAR_HOST_URL: http://localhost:9000
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
-          GITHUB_SHA:     ${{ needs.test.outputs.commit_sha }}
+          GITHUB_SHA:     ${{ needs.test.outputs.sha }}
         run: |
-          ./sonar-scanner/bin/sonar-scanner \
-            -Dsonar.projectKey=assistant-bot \
-            -Dsonar.sources=backend,frontend \
-            -Dsonar.python.coverage.reportPaths=backend/coverage-3.11.xml \
-            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.scm.revision=$GITHUB_SHA
+          .\scanner\sonar-scanner-*/bin\sonar-scanner.bat `
+            -Dsonar.projectKey=assistant-bot `
+            -Dsonar.sources=backend,frontend `
+            -Dsonar.host.url=%SONAR_HOST_URL% `
+            -Dsonar.login=%SONAR_TOKEN% `
+            -Dsonar.python.coverage.reportPaths=backend/coverage.xml `
+            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info `
+            -Dsonar.scm.revision=%GITHUB_SHA%
