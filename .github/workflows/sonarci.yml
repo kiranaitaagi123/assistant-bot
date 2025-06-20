@@ -76,9 +76,36 @@ jobs:
           java-version: '11'
 
       - name: Install SonarScanner CLI
+        shell: pwsh
         run: |
-          # download & expand into a named folder
+          # define the zip path
+          $zip = "$PWD\scanner.zip"
+          Write-Host "Downloading SonarScanner CLI to $zip..."
           Invoke-WebRequest `
             -Uri 'https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-windows.zip' `
-            -OutFile scanner.zip
-          Expand-Archive scann
+            -OutFile $zip
+
+          Write-Host "Expanding $zip to sonar-scanner folder..."
+          Expand-Archive `
+            -LiteralPath $zip `
+            -DestinationPath "$PWD\sonar-scanner" `
+            -Force
+
+      - name: Run SonarQube analysis
+        shell: pwsh
+        env:
+          SONAR_HOST_URL: http://localhost:9000
+          SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
+          GITHUB_SHA:     ${{ needs.test.outputs.commit_sha }}
+        run: |
+          $scannerDir = Get-ChildItem -Directory "$PWD\sonar-scanner" | Select-Object -First 1
+          $exe = Join-Path $scannerDir.FullName 'bin\sonar-scanner.bat'
+          Write-Host "Invoking" $exe
+          & $exe `
+            -Dsonar.projectKey=assistant-bot `
+            -Dsonar.sources=backend,frontend `
+            -Dsonar.host.url=%SONAR_HOST_URL% `
+            -Dsonar.login=%SONAR_TOKEN% `
+            -Dsonar.python.coverage.reportPaths=backend/coverage-3.11.xml `
+            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info `
+            -Dsonar.scm.revision=%GITHUB_SHA%
