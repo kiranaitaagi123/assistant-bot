@@ -3,6 +3,11 @@ name: CI + SonarQube Analysis
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/sonarci.yml'
+      - '.github/workflows/matrix-build.yml'
   pull_request:
 
 jobs:
