@@ -8,8 +8,7 @@ on:
 jobs:
   sonar:
     name: SonarQube Analysis
-    needs: test
-    runs-on: [self-hosted, windows]
+    runs-on: [ self-hosted, windows, x64 ]
     timeout-minutes: 10
 
     steps:
@@ -21,13 +20,13 @@ jobs:
       - name: Set up Java 11
         uses: actions/setup-java@v3
         with:
-          distribution: temurin    # ← lower-case
+          distribution: temurin
           java-version: '11'
 
       - name: Install SonarScanner CLI
         run: |
           Invoke-WebRequest `
-            -Uri "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-windows.zip" `
+            -Uri 'https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-windows.zip' `
             -OutFile scanner.zip
           Expand-Archive scanner.zip -DestinationPath scanner
 
@@ -35,7 +34,6 @@ jobs:
         env:
           SONAR_HOST_URL: http://localhost:9000
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
-          GITHUB_SHA:     ${{ needs.test.outputs.sha }}
         run: |
           .\scanner\sonar-scanner-*/bin\sonar-scanner.bat `
             -Dsonar.projectKey=assistant-bot `
@@ -43,5 +41,4 @@ jobs:
             -Dsonar.host.url=%SONAR_HOST_URL% `
             -Dsonar.login=%SONAR_TOKEN% `
             -Dsonar.python.coverage.reportPaths=backend/coverage.xml `
-            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info `
-            -Dsonar.scm.revision=%GITHUB_SHA%
+            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info
