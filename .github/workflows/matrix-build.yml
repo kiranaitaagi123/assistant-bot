@@ -1,6 +1,6 @@
 name: Matrix Build
 
-on: [push]
+on: workflow_dispatch
 
 jobs:
   test:
