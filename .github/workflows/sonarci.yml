@@ -77,7 +77,6 @@ jobs:
 
       - name: Install SonarScanner CLI
         run: |
-          # define the zip path in the workspace
           $zip = Join-Path $env:RUNNER_WORKSPACE 'scanner.zip'
           Write-Host "Downloading SonarScanner CLI to $zip..."
           Invoke-WebRequest `
@@ -98,13 +97,17 @@ jobs:
           GITHUB_SHA:     ${{ needs.test.outputs.commit_sha }}
         run: |
           $scannerDir = Get-ChildItem -Directory (Join-Path $env:RUNNER_WORKSPACE 'sonar-scanner') | Select-Object -First 1
-          $exe = Join-Path $scannerDir.FullName 'bin\sonar-scanner.bat'
-          Write-Host "Invoking $exe"
-          & $exe `
-            -Dsonar.projectKey=assistant-bot `
-            -Dsonar.sources=backend,frontend `
-            -Dsonar.host.url=$Env:SONAR_HOST_URL `
-            -Dsonar.login=$Env:SONAR_TOKEN `
-            -Dsonar.python.coverage.reportPaths=backend/coverage-3.11.xml `
-            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info `
-            -Dsonar.scm.revision=$Env:GITHUB_SHA
+          $exe        = Join-Path $scannerDir.FullName 'bin\sonar-scanner.bat'
+          Write-Host "Invoking SonarScanner at $exe"
+
+          $args = @(
+            "-Dsonar.projectKey=assistant-bot",
+            "-Dsonar.sources=backend,frontend",
+            "-Dsonar.host.url=$Env:SONAR_HOST_URL",
+            "-Dsonar.login=$Env:SONAR_TOKEN",
+            "-Dsonar.python.coverage.reportPaths=backend/coverage-3.11.xml",
+            "-Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info",
+            "-Dsonar.scm.revision=$Env:GITHUB_SHA"
+          )
+
+          & $exe @args
