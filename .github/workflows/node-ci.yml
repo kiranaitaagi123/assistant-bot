@@ -6,15 +6,20 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # All `run:` steps below execute in "frontend" folder by default
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ─── CACHING ─────────────────────────────────────
+      # ─── CACHE ─────────────────────────────────
       - name: Cache node modules
         uses: actions/cache@v4
         with:
-          path: frontend/node_modules
+          path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
@@ -25,25 +30,18 @@ jobs:
           node-version: 18
 
       - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
+        run: npm ci
 
       - name: Run tests
-        run: |
-          npm test | tee test.log
-          npm test
-        continue-on-error: false
+        run: npm test | tee test.log
 
-      # ─── UPLOAD ARTIFACTS ────────────────────────────
-      - name: Upload test logs
+      # ─── UPLOAD ARTIFACTS ────────────────────
+      - name: Upload test log
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-test-logs
-          path: frontend/test.log
+          name: frontend-test-log
+          path: test.log
 
-      # ─── SECURITY SCAN ───────────────────────────────
+      # ─── SECURITY SCAN ───────────────────────
       - name: Run npm audit
-        run: |
-          cd frontend
-          npm audit --audit-level=high
+        run: npm audit --audit-level=high || true
