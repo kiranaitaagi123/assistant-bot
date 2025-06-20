@@ -1,0 +1,31 @@
+name: Push CI Metrics
+
+on:
+  workflow_run:
+    workflows: 
+      - "CI + SonarQube Analysis"
+    types:
+      - completed
+
+jobs:
+  collect:
+    # only push when the CI run actually succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install prometheus_client requests
+
+      - name: Collect & push metrics
+        env:
+          GITHUB_TOKEN:    ${{ secrets.GIT_TOKEN }}
+          GITHUB_REPO:     ${{ github.repository }}
+          GITHUB_RUN_ID:   ${{ github.event.workflow_run.id }}
+          PUSHGATEWAY_URL: http://pushgateway:9091 
+        run: python scripts/collect_ci_metrics.py
