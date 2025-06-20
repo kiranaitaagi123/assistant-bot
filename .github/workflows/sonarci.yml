@@ -91,7 +91,7 @@ jobs:
             -Force
 
       - name: Run SonarQube analysis
-        shell: pwsh
+        shell: powershell
         env:
           SONAR_HOST_URL: http://localhost:9000
           SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
@@ -99,12 +99,12 @@ jobs:
         run: |
           $scannerDir = Get-ChildItem -Directory (Join-Path $env:RUNNER_WORKSPACE 'sonar-scanner') | Select-Object -First 1
           $exe = Join-Path $scannerDir.FullName 'bin\sonar-scanner.bat'
-          Write-Host "Invoking" $exe
+          Write-Host "Invoking $exe"
           & $exe `
             -Dsonar.projectKey=assistant-bot `
             -Dsonar.sources=backend,frontend `
-            -Dsonar.host.url=%SONAR_HOST_URL% `
-            -Dsonar.login=%SONAR_TOKEN% `
+            -Dsonar.host.url=$Env:SONAR_HOST_URL `
+            -Dsonar.login=$Env:SONAR_TOKEN `
             -Dsonar.python.coverage.reportPaths=backend/coverage-3.11.xml `
             -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info `
-            -Dsonar.scm.revision=%GITHUB_SHA%
+            -Dsonar.scm.revision=$Env:GITHUB_SHA
