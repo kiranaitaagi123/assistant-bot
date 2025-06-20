@@ -1,19 +1,23 @@
+# .github/workflows/collect-metrics.yml
 name: Push CI Metrics
 
 on:
   workflow_run:
-    workflows: 
-      - "CI + SonarQube Analysis"
+    workflows:
+      - "CI + SonarQube Analysis"    # must exactly match your other workflow’s `name:`
     types:
       - completed
 
 jobs:
   collect:
-    # only push when the CI run actually succeeded
+    # only run if the CI + SonarQube Analysis finished successfully
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -24,8 +28,8 @@ jobs:
 
       - name: Collect & push metrics
         env:
-          GITHUB_TOKEN:    ${{ secrets.GIT_TOKEN }}
+          GITHUB_TOKEN:    ${{ secrets.GIT_TOKEN }}    # or your custom secret if you created one
           GITHUB_REPO:     ${{ github.repository }}
           GITHUB_RUN_ID:   ${{ github.event.workflow_run.id }}
-          PUSHGATEWAY_URL: http://pushgateway:9091 
+          PUSHGATEWAY_URL: http://pushgateway:9091
         run: python scripts/collect_ci_metrics.py
