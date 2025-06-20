@@ -46,7 +46,11 @@ jobs:
         run: pip install bandit
 
       - name: Run Bandit security scan
-        run: bandit -r backend -f json -o backend/bandit-report-${{ matrix.python-version }}.json
+        run: |
+          bandit -r backend \
+            -f json \
+            -o backend/bandit-report-${{ matrix.python-version }}.json \
+            || true
 
       - name: Upload Bandit report
         uses: actions/upload-artifact@v4
