@@ -3,11 +3,7 @@ name: CI + SonarQube Analysis
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'backend/**'
-      - 'frontend/**'
-      - '.github/workflows/sonarci.yml'
-      - '.github/workflows/matrix-build.yml'
+    
   pull_request:
 
 jobs:
@@ -104,7 +100,6 @@ jobs:
           $scannerDir = Get-ChildItem -Directory (Join-Path $env:RUNNER_WORKSPACE 'sonar-scanner') | Select-Object -First 1
           $exe        = Join-Path $scannerDir.FullName 'bin\sonar-scanner.bat'
           Write-Host "Invoking SonarScanner at $exe"
-
           $args = @(
             "-Dsonar.projectKey=assistant-bot",
             "-Dsonar.sources=backend,frontend",
