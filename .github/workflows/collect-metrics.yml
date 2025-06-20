@@ -1,5 +1,5 @@
 # .github/workflows/collect-metrics.yml
-name: Push CI Metrics
+name: PushCI Metrics
 
 on:
   workflow_run:
