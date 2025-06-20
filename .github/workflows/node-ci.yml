@@ -1,14 +1,49 @@
 name: Node CI
-on: [push]
+
+on: [push, pull_request]
+
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: 18
-    - run: |
-        cd frontend
-        npm ci
-        npm test
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ─── CACHING ─────────────────────────────────────
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run tests
+        run: |
+          npm test | tee test.log
+          npm test
+        continue-on-error: false
+
+      # ─── UPLOAD ARTIFACTS ────────────────────────────
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-logs
+          path: frontend/test.log
+
+      # ─── SECURITY SCAN ───────────────────────────────
+      - name: Run npm audit
+        run: |
+          cd frontend
+          npm audit --audit-level=high

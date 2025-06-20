@@ -13,15 +13,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      # ─── CACHING ─────────────────────────────────────
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('backend/requirements.txt') }}
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
+      # ─── INSTALL & TEST ──────────────────────────────
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run tests
-        run: pytest backend/test_app.py
+      - name: Run pytest
+        run: pytest --junitxml=backend/test_results-${{ matrix.python-version }}.xml
+
+      # ─── UPLOAD ARTIFACTS ────────────────────────────
+      - name: Upload pytest results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: backend/test_results-${{ matrix.python-version }}.xml
+
+      # ─── SECURITY SCAN ───────────────────────────────
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit security scan
+        run: bandit -r backend -f json -o backend/bandit-report-${{ matrix.python-version }}.json
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report-${{ matrix.python-version }}
+          path: backend/bandit-report-${{ matrix.python-version }}.json
