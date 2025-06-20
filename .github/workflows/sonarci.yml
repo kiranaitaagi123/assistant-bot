@@ -1,4 +1,4 @@
-name: SonarQube Analysis
+name: CI + SonarQube Analysis
 
 on:
   push:
@@ -6,8 +6,60 @@ on:
   pull_request:
 
 jobs:
+  # ───────────────────────────────────────────────────────────────────────────────
+  # 1) Matrix’d tests + coverage artifacts
+  # ───────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Matrix Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9","3.10","3.11"]
+    outputs:
+      commit_sha: ${{ steps.checkout.outputs.commit }}
+
+    steps:
+      - id: checkout
+        name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install deps & coverage tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install coverage pytest
+          pip install -r backend/requirements.txt
+
+      - name: Run backend tests + coverage
+        run: |
+          pytest --junitxml=backend/test_results-${{ matrix.python-version }}.xml
+          coverage run --source=backend -m pytest backend
+          coverage xml -o backend/coverage-${{ matrix.python-version }}.xml
+
+      - name: Upload pytest results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-${{ matrix.python-version }}
+          path: backend/test_results-${{ matrix.python-version }}.xml
+
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-${{ matrix.python-version }}
+          path: backend/coverage-${{ matrix.python-version }}.xml
+
+  # ───────────────────────────────────────────────────────────────────────────────
+  # 2) SonarQube analysis on your self-hosted runner
+  # ───────────────────────────────────────────────────────────────────────────────
   sonar:
     name: SonarQube Analysis
+    needs: test
     runs-on: [ self-hosted, windows, x64 ]
     timeout-minutes: 10
 
@@ -25,20 +77,8 @@ jobs:
 
       - name: Install SonarScanner CLI
         run: |
+          # download & expand into a named folder
           Invoke-WebRequest `
             -Uri 'https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-windows.zip' `
             -OutFile scanner.zip
-          Expand-Archive scanner.zip -DestinationPath scanner
-
-      - name: Run SonarQube analysis
-        env:
-          SONAR_HOST_URL: http://localhost:9000
-          SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
-        run: |
-          .\scanner\sonar-scanner-*/bin\sonar-scanner.bat `
-            -Dsonar.projectKey=assistant-bot `
-            -Dsonar.sources=backend,frontend `
-            -Dsonar.host.url=%SONAR_HOST_URL% `
-            -Dsonar.login=%SONAR_TOKEN% `
-            -Dsonar.python.coverage.reportPaths=backend/coverage.xml `
-            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info
+          Expand-Archive scann
