@@ -1,9 +1,11 @@
 name: CI Dummy
+
 on:
   push:
-    branches: [main]
+    branches: [ main ]
+
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Dummy build"
+      - run: echo "Hello from CI Dummy"
