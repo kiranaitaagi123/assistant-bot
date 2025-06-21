@@ -1,4 +1,5 @@
 name: CI + SonarQube Analysis
+# Trigger CI
 
 on:
   push:
