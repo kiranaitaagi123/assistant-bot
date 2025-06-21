@@ -1,16 +1,16 @@
-# .github/workflows/collect-metrics.yml
 name: PushCI Metrics
 
 on:
   workflow_run:
     workflows:
-      - "CI + SonarQube Analysis"    # must exactly match your other workflow’s `name:`
+      - "CI + SonarQube Analysis"
     types:
-      - completed #this must be tri
+      - completed
+    branches: [ dev ]  # Only trigger for dev branch runs
 
 jobs:
   collect:
-    # only run if the CI + SonarQube Analysis finished successfully
+    # Only run if the CI workflow finished successfully
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
@@ -26,9 +26,15 @@ jobs:
       - name: Install dependencies
         run: pip install prometheus_client requests
 
+      - name: Debug workflow run info
+        run: |
+          echo "Workflow run ID: ${{ github.event.workflow_run.id }}"
+          echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Repository: ${{ github.repository }}"
+
       - name: Collect & push metrics
         env:
-          GITHUB_TOKEN:    ${{ secrets.GIT_TOKEN }}    # or your custom secret if you created one
+          GITHUB_TOKEN:    ${{ secrets.GIT_TOKEN }}  # Use default token first
           GITHUB_REPO:     ${{ github.repository }}
           GITHUB_RUN_ID:   ${{ github.event.workflow_run.id }}
           PUSHGATEWAY_URL: http://pushgateway:9091

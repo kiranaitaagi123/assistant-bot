@@ -1,16 +1,14 @@
 name: CI + SonarQube Analysis
-# Trigger CI
-
 on:
   push:
-    branches: [ dev ]
-    
+    branches: [ main ]
   pull_request:
+    branches: [ main ]  # Added target branch for PR
+  
+  # Optional: Add manual trigger for testing
+  workflow_dispatch:
 
 jobs:
-  # ───────────────────────────────────────────────────────────────────────────────
-  # 1) Matrix’d tests + coverage artifacts
-  # ───────────────────────────────────────────────────────────────────────────────
   test:
     name: Matrix Test
     runs-on: ubuntu-latest
@@ -55,5 +53,3 @@ jobs:
         with:
           name: backend-coverage-${{ matrix.python-version }}
           path: backend/coverage-${{ matrix.python-version }}.xml
-
- 
