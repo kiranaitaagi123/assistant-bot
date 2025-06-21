@@ -1,0 +1,11 @@
+name: Collect Dummy
+on:
+  workflow_run:
+    workflows: ["CI Dummy"]
+    types:
+      - [completed]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Triggered by workflow_run!"
