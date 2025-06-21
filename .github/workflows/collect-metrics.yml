@@ -6,8 +6,7 @@ on:
       - "CI + SonarQube Analysis"
     types:
       - [completed]
-    branches: [ main ]  # Only trigger for dev branch runs
-
+   
 jobs:
   collect:
     # Only run if the CI workflow finished successfully
