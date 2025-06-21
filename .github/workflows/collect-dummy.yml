@@ -2,10 +2,13 @@ name: Collect Dummy
 on:
   workflow_run:
     workflows: ["CI Dummy"]
-    types:
-      - [completed]
+    types: [completed]
+    # Remove branches filter or make sure it matches
+    # branches: [main]
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Triggered by workflow_run!"
+      - run: echo "Previous workflow conclusion was ${{ github.event.workflow_run.conclusion }}"

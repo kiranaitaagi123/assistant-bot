@@ -1,5 +1,4 @@
 name: CI Dummy
-
 on:
   push:
     branches: [ main ]
