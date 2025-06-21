@@ -3,7 +3,7 @@ name: CI + SonarQube Analysis
 
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
     
   pull_request:
 
