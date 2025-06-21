@@ -6,7 +6,7 @@ on:
     workflows:
       - "CI + SonarQube Analysis"    # must exactly match your other workflow’s `name:`
     types:
-      - completed
+      - completed #this must be triggered
 
 jobs:
   collect:
