@@ -1,7 +1,7 @@
 name: Collect Dummy
 on:
   workflow_run:
-    workflows: ["CI Dummy"]
+    workflows: ["CI + SonarQube Analysis"]
     types: [completed]
     # Remove branches filter or make sure it matches
     # branches: [main]
