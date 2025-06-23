@@ -4,7 +4,7 @@ name: PushCI Metrics
 on:
   workflow_run:
     # must exactly match the `name:` of your other workflow
-    workflows: "CI + SonarQube Analysis"
+    workflows: "CI Dummy"
     # fire only when that workflow has fully completed
     types: [completed]
 
